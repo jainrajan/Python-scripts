@@ -1,0 +1,17 @@
+import pandas as pd
+import numpy as np
+from faker import Faker
+
+fake = Faker('en_IN')  # Indian style
+n = 5000
+
+df = pd.DataFrame({
+    'Customer_ID': range(100000, 100000 + n),
+    'Branch': np.random.choice(['Delhi', 'Mumbai', 'Bangalore', 'Chennai', 'Kolkata'], n),
+    'Loan_Amount': np.random.randint(50000, 5000000, n),
+    'Overdue_Days': np.random.choice( , n, p=[0.7, 0.3]),
+    'Recovery_Amount': lambda x: x * np.random.uniform(0, 1, n) if x > 90 else x ,
+    'Status': np.where(np.random.rand(n) < 0.25, 'NPA', 'Performing')
+})
+
+df.to_csv('dummy_npa_recovery.csv', index=False)
