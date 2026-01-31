@@ -1,17 +1,71 @@
+# pip install faker pandas numpy
+
 import pandas as pd
 import numpy as np
 from faker import Faker
 
-fake = Faker('en_IN')  # Indian style
+# ------------------ CONFIG ------------------
+fake = Faker('en_IN')
+np.random.seed(42)          # reproducibility
 n = 5000
 
+branches_list = ['Delhi', 'Mumbai', 'Bangalore', 'Chennai', 'Kolkata']
+overdue_choices = [0, 30, 60, 90, 180, 365]
+overdue_probs = [0.40, 0.25, 0.15, 0.10, 0.06, 0.04]
+
+# ------------------ DATA GENERATION ------------------
+names = [fake.name() for _ in range(n)]
+emails = [fake.email() for _ in range(n)]
+branches = np.random.choice(branches_list, n)
+
+loan_amount = np.random.randint(50_000, 50_00_000, n)
+
+overdue_days = np.random.choice(
+    overdue_choices,
+    size=n,
+    p=overdue_probs
+)
+
 df = pd.DataFrame({
-    'Customer_ID': range(100000, 100000 + n),
-    'Branch': np.random.choice(['Delhi', 'Mumbai', 'Bangalore', 'Chennai', 'Kolkata'], n),
-    'Loan_Amount': np.random.randint(50000, 5000000, n),
-    'Overdue_Days': np.random.choice( , n, p=[0.7, 0.3]),
-    'Recovery_Amount': lambda x: x * np.random.uniform(0, 1, n) if x > 90 else x ,
-    'Status': np.where(np.random.rand(n) < 0.25, 'NPA', 'Performing')
+    'Customer_ID': np.arange(100000, 100000 + n),
+    'Name': names,
+    'Email': emails,
+    'Branch': branches,
+    'Loan_Amount': loan_amount,
+    'Overdue_Days': overdue_days
 })
 
+# ------------------ DERIVED COLUMNS ------------------
+
+# Asset Classification
+df['Account_Status'] = np.where(
+    df['Overdue_Days'] > 90,
+    'NPA',
+    'Performing'
+)
+
+# Recovery Logic
+df['Recovery_Amount'] = 0.0
+
+npa_mask = df['Overdue_Days'] > 90
+perf_mask = df['Overdue_Days'] <= 90
+
+# NPA → partial recovery
+df.loc[npa_mask, 'Recovery_Amount'] = (
+    df.loc[npa_mask, 'Loan_Amount'] *
+    np.random.uniform(0.2, 0.6, npa_mask.sum())
+)
+
+# Performing → near full recovery
+df.loc[perf_mask, 'Recovery_Amount'] = (
+    df.loc[perf_mask, 'Loan_Amount'] *
+    np.random.uniform(0.8, 1.05, perf_mask.sum())
+)
+
+df['Recovery_Amount'] = df['Recovery_Amount'].round(2)
+
+# ------------------ EXPORT ------------------
 df.to_csv('dummy_npa_recovery.csv', index=False)
+
+print("✅ Ready. File saved: dummy_npa_recovery.csv")
+print(df.head())
